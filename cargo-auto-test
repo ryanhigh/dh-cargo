@@ -1,0 +1,85 @@
+#!/bin/bash
+# Run `cargo test` on an installed Debian crate, e.g. in an autopkgtest.
+#
+# Requires dev-dependencies to be installed. If you give extra flags such as
+# "--all-features", then these features' dependencies must also be installed.
+#
+# This script also swallows some known false-positive test failures, so you
+# don't have to set test_is_broken everywhere in your debcargo.toml configs.
+
+set -e
+
+pkg="$1"
+ver="$2"
+
+if [ -z "$pkg" -o -z "$ver" ]; then
+	echo >&2 "Usage: $0 <crate> <version> [<extra test flags, e.g. --all-features>]"
+	exit 2
+fi
+shift 2
+
+pkgdir="/usr/share/cargo/registry/${pkg}-${ver}"
+if [ ! -d "$pkgdir" ]; then
+	echo >&2 "crate directory not found: $pkgdir"
+	exit 1
+fi
+cd "$pkgdir"
+
+rundir=$(mktemp -d)
+# https://stackoverflow.com/a/14812383 inside "trap" avoids running handler twice
+trap 'excode=$?; rm -rf "'"$rundir"'"; trap - EXIT' EXIT HUP INT QUIT PIPE TERM
+
+# set envvars necessary for cargo-debian-wrapper
+
+export DEB_CARGO_CRATE="${pkg}_${ver}"
+export CARGO_HOME="$rundir/debian/cargo_home"
+mkdir -p "$CARGO_HOME"
+mkdir -p "$rundir/registry"
+
+. <(dpkg-buildflags --export)
+. <(dpkg-architecture -s)
+RUST_TYPE="$(rustc --version --verbose | sed -ne 's/^host: //p')"
+export DEB_HOST_RUST_TYPE="$RUST_TYPE"
+export DEB_BUILD_RUST_TYPE="$RUST_TYPE"
+export DEB_TARGET_RUST_TYPE="$RUST_TYPE"
+
+export CARGO_TARGET_DIR="$rundir/target"
+export PATH="/usr/share/cargo/bin:$PATH"
+
+# run the test!
+
+if [ -t 2 ]; then flags="--color=always"; export RUSTDOCFLAGS="--color=always"; fi
+
+run_test() {
+	local n="$1"
+	shift
+	{ cargo test $flags "$@" 2>&1; echo "$?" > "$rundir/run-$n.ec"; } | tee "$rundir/run-$n.log"
+	sed -i -e 's/\x1b\[[0-9;]*m//g' "$rundir/run-$n.log" # rm ansi colour codes
+	local x="$(< "$rundir/run-$n.ec")"
+	if [ "$x" = "0" ]; then
+		return 0
+	fi
+	local e="$(egrep -o '^error\[E[0-9]+\]' "$rundir/run-$n.log" | sort -u | tr '\n' ',')"
+	# some crates like to update their old versions to depend on their new
+	# versions, e.g. rand-core. unfortunately this breaks cargo test, see
+	# https://github.com/rust-lang/cargo/issues/6819. so just ignore them.
+	if [ "$e" = "error[E0463],error[E0465]," ]; then
+		echo "cargo-auto-test: ignore test failure due to upstream #6819: $e"
+		return 0
+	fi
+	return "$x"
+}
+
+set +e
+
+cargo prepare-debian "$rundir/registry" --link-from-system
+
+run_test 0 "$@"
+x="$?"
+if [ "$x" = "0" ]; then exit 0; fi
+if ! egrep -q '^error\[E0554\]' "$rundir/run-0.log"; then exit "$x"; fi
+
+echo
+echo "----------------------------------------------------------------"
+echo "cargo-auto-test: re-running test with RUSTC_BOOTSTRAP due to E0554"
+RUSTC_BOOTSTRAP=1 run_test 1 "$@"
