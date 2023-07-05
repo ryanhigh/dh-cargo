@@ -1,12 +1,14 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: dh-cargo
 Upstream-Contact: Josh Triplett <josh@joshtriplett.org>
-Source: https://anonscm.debian.org/git/pkg-rust/dh-cargo.git
+Source: https://salsa.debian.org/rust-team/dh-cargo
 
 Files: *
 Copyright:
- 2018 Ximin Luo <infinity0@debian.org>
  2016 Josh Triplett <josh@joshtriplett.org>
+ 2018-2021 Ximin Luo <infinity0@debian.org>
+ 2019-2021 Sylvestre Ledru <sylvestre@debian.org>
+ 2022 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 License: MIT
 
 License: MIT

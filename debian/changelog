@@ -1,3 +1,26 @@
+dh-cargo (30) unstable; urgency=medium
+
+  * wrap-and-sort -ast
+  * Add Provides: dh-sequence-cargo
+  * Avoid stripping Cargo.toml.orig (Closes: #1023413)
+  * Declare Rules-Requires-Root: no
+  * Clarify package description, clearing using-first-person-in-description
+  * d/copyright: correct Source URL to point explicitly to salsa
+  * d/copyright: update dates, include other contributors
+  * Add myself to uploaders
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 26 Nov 2022 09:45:44 +0700
+
+dh-cargo (29) unstable; urgency=medium
+
+  [ Rob Shearman ]
+  * dh-cargo-built-using: avoid varying package order if LC_ALL is set
+
+  [ Sylvestre Ledru ]
+  * Update standards version to 4.6.1, no changes needed.
+
+ -- Sylvestre Ledru <sylvestre@debian.org>  Thu, 24 Nov 2022 14:12:27 +0100
+
 dh-cargo (28) unstable; urgency=medium
 
   * Support packages with ruzt-* prefix to help with debcargo testing.

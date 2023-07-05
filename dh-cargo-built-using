@@ -170,4 +170,4 @@ native_libs="$(native_libs)" # capture output outside of pipe so set -e works
 {
 rust_libs
 test -z "$native_libs" || echo "$native_libs"
-} | LC_COLLATE=C.utf-8 sort -u | output "$@"
+} | LC_ALL=C.utf-8 sort -u | output "$@"
